@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Doorda COVID-19 Map</title>
+<meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+<script src="https://api.mapbox.com/mapbox-gl-js/v1.9.1/mapbox-gl.js"></script>
+<link href="https://api.mapbox.com/mapbox-gl-js/v1.9.1/mapbox-gl.css" rel="stylesheet" />
+<style>
+	body { margin: 0; padding: 0; }
+	#map { position: absolute; top: 0; bottom: 0; width: 100%; }
+</style>
+</head>
+<body>
+<style>
+    #menu {
+        background: #fff;
+        position: absolute;
+        z-index: 1;
+        top: 15px;
+        right: 20px;
+        border-radius: 3px;
+        width: 180px;
+        border: 1px solid rgba(0, 0, 0, 0.4);
+        font-family: 'Open Sans', sans-serif;
+    }
+
+    #menu a {
+        font-size: 11px;
+        color: #404040;
+        display: block;
+        margin: 0;
+        padding: 0;
+        padding: 10px;
+        text-decoration: none;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.25);
+        text-align: Left;
+    }
+
+    #menu a:last-child {
+        border: none;
+    }
+
+    #menu a:hover {
+        background-color: #f8f8f8;
+        color: #404040;
+    }
+
+    #menu a.active {
+        background-color: #3887be;
+        color: #ffffff;
+    }
+
+    #menu a.active:hover {
+        background: #3074a4;
+    }
+</style>
+
+<nav id="menu"></nav>
+<div id="map"></div>
+
+<script>
+	mapboxgl.accessToken = 'pk.eyJ1IjoiY2FsdW1sYnIiLCJhIjoiY2p1aThnamliMDR5eTRkbnFxNDQ1YWloNyJ9.8JSM4DjuVYyCzwGNUlAkCg';
+    var map = new mapboxgl.Map({
+        container: 'map',
+        style: 'mapbox://styles/mapbox/light-v10',
+        zoom: 10,
+        center: [0.09, 51.585]
+    });
+
+    map.on('load', function() {
+		
+		
+		///////////////////////////////////////////////////////////////////////////////////L BOUNDARY///////////////////////////////////
+		map.addSource('la', {
+            type: 'geojson',
+            data: './la.geojson'
+        });
+        map.addLayer({
+            'id': 'LA boundaries',
+            'type': 'line',
+            'source': 'la',
+            
+            'layout': {
+                'visibility': 'visible',
+                //'line-join': 'round',
+                //'line-cap': 'butt',
+				//'line-miter-limit': 2
+            },
+            'paint': {
+                'line-color': '#000000',
+                'line-width': 0.75,
+				//'line-opacity': 0.3,
+				//'line-dasharray': [2.5, 2]
+            }
+        });
+		
+		///////////////////////////////////////////////////////////////////////////////////DOORDA/////////////////////////////
+        map.addSource('Doorda', {
+			type: 'geojson',
+			data: './Doorda.geojson'
+		});
+		/////////////////////////////////////////////////////Wards///////////////
+        map.addLayer({
+            'id': 'Doorda - Infection as is 04',//must be the same as --var toggleableLayerIds
+            'type': 'fill',
+            'source': 'Doorda',///must match map.addSource(
+            'layout': {
+                'visibility': 'visible'
+            },
+            'paint': {
+                'fill-color': ["step",["get", "asis"],"#A9A9A9",0,"#ffffb2",5,"#fed976",10,"#feb24c",15,"#fd8d3c",20,"#f03b20",25,'#bd0026'],
+				'fill-outline-color': "rgba(140,140,140,10)",
+				'fill-opacity': 0.8,
+				'fill-antialias': true 
+            }   
+        },'LA boundaries');
+		
+		///////////////////////////////////////////////////////////////////////////////////WARD LABELS///////////////////////////////////
+		map.addSource('wardname', {///must match map.addlayer(source:
+            type: 'vector',
+            url: 'mapbox://calumlbr.7ndwsdnm'//Tileset id
+        });
+		map.addLayer({
+            'id': 'LBR ward names',//must be the same as --var toggleableLayerIds
+            'type': 'symbol',
+			 minzoom: 12,
+            'source': 'wardname',///must match map.addSource(
+            'layout': {
+				'visibility': 'visible',
+				'text-field': ['to-string',['get', 'Ward']],
+				'text-font': ["Open Sans Regular","Arial Unicode MS Regular"],
+				'text-size': ["interpolate",["linear"],["zoom"],0,12,22,16],
+				'text-anchor': 'center',
+				'text-radial-offset': 0.5,
+				'text-justify': 'auto',
+				'icon-image': ['concat', ['get', 'icon'], '-15'],
+				'symbol-placement': 'point',
+				'text-allow-overlap': true
+			},
+			'paint': {
+				'text-color': '#000000',
+				'text-opacity': 0.5,
+				'text-halo-color': "hsla(0, 0%, 93%, 0.9)",
+				'text-halo-width': 2
+			},
+            'source-layer': 'centroid-dhs23k'//Tileset layer name
+        });
+		
+		
+    });
+
+    var toggleableLayerIds = ['Doorda - Infection as is 04','Lbr ward names','LA boundaries'];
+
+    for (var i = 0; i < toggleableLayerIds.length; i++) {
+        var id = toggleableLayerIds[i];
+
+        var link = document.createElement('a');
+        link.href = '#';
+        link.className = '';//switches highligh button colour add 'active' to restore to original state
+        link.textContent = id;
+
+        link.onclick = function(e) {
+            var clickedLayer = this.textContent;
+            e.preventDefault();
+            e.stopPropagation();
+
+            var visibility = map.getLayoutProperty(clickedLayer, 'visibility');
+
+            if (visibility === 'visible') {
+                map.setLayoutProperty(clickedLayer, 'visibility', 'none');
+                this.className = '';
+            } else {
+                this.className = 'active';
+                map.setLayoutProperty(clickedLayer, 'visibility', 'visible');
+            }
+        };
+
+        var layers = document.getElementById('menu');
+        layers.appendChild(link);
+    }
+	
+	map.on('click', 'Doorda - Infection as is 04', function(e) {
+		new mapboxgl.Popup()
+			.setLngLat(e.lngLat)
+			.setHTML('<b>Infection rate:</b> ' + e.features[0].properties['asis']+'%'+'<br/>'+'<b>Ward Name</b> ' + e.features[0].properties.doora_WardName)
+			.addTo(map);
+	});
+	
+	
+	
+</script>
+
+</body>
+</html>
